@@ -50,6 +50,9 @@ type MapClaims map[string]interface{}
 // Users can get a token by posting a json request to LoginHandler. The token then needs to be passed in
 // the Authentication header. Example: Authorization:Bearer XXX_TOKEN_XXX
 type HertzJWTMiddleware struct {
+	// When the WithNext function returns true, the jwt middleware can be skipped
+	WithNext func(ctx context.Context, c *app.RequestContext) bool
+
 	// Realm name to display to the user. Required.
 	Realm string
 
@@ -450,6 +453,10 @@ func (mw *HertzJWTMiddleware) MiddlewareFunc() app.HandlerFunc {
 }
 
 func (mw *HertzJWTMiddleware) middlewareImpl(ctx context.Context, c *app.RequestContext) {
+	if mw.WithNext(ctx, c) {
+		c.Next(ctx)
+		return
+	}
 	claims, err := mw.GetClaimsFromJWT(ctx, c)
 	if err != nil {
 		mw.unauthorized(ctx, c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, ctx, c))
